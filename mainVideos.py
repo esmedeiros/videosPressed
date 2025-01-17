@@ -12,10 +12,10 @@ s3_client = boto3.client('s3')
 @app.route('/videos', methods=['GET'])
 def list_videos():
     """
-    Lista os vídeos disponíveis no bucket S3.
+    Lista os vídeos disponíveis no bucket S3 e gera URLs pré-assinadas para download.
 
     Returns:
-        JSON: Lista de arquivos com seus caminhos no S3.
+        JSON: Lista de arquivos com seus caminhos no S3 e URLs pré-assinadas.
     """
     try:
         # Lista os objetos no bucket
@@ -25,11 +25,18 @@ def list_videos():
         # Adiciona os arquivos na lista
         if 'Contents' in response:
             for obj in response['Contents']:
+                # Gera a URL pré-assinada
+                download_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': BUCKET_NAME, 'Key': obj['Key']},
+                    ExpiresIn=3600  # URL válida por 1 hora
+                )
                 files.append({
                     "file_name": obj['Key'].split('/')[-1],
                     "s3_path": obj['Key'],
                     "size": obj['Size'],
-                    "last_modified": obj['LastModified'].isoformat()
+                    "last_modified": obj['LastModified'].isoformat(),
+                    "download_url": download_url
                 })
 
         return jsonify({
@@ -44,4 +51,4 @@ def list_videos():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
